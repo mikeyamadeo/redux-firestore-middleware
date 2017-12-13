@@ -54,16 +54,15 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     const applySchema = makeSchemaApplier(schema)
 
     const onSuccess = response => {
-      const schemaData = query.constructor.name === 'DocumentReference'
-        ? response
-        : response.docs
-      return next(
+      const schemaData = response.docs || response
+      next(
         actionWith({
           type: successType,
           payload: applySchema(schemaData),
           meta
         })
       )
+      return schemaData
     }
     const onFail = FirebaseError => {
       console.warn(FirebaseError)
