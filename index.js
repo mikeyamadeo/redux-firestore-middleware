@@ -54,7 +54,7 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     const applySchema = makeSchemaApplier(schema)
 
     const onSuccess = response => {
-      const schemaData = response.docs || response
+      const schemaData = response && response.docs || response
       next(
         actionWith({
           type: successType,
