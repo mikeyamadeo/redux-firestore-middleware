@@ -54,15 +54,16 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     const applySchema = makeSchemaApplier(schema)
 
     const onSuccess = response => {
-      const schemaData = response && response.docs || response
-      next(
+      const schemaData = query.constructor.name === 'DocumentReference'
+        ? response
+        : response.docs
+      return next(
         actionWith({
           type: successType,
           payload: applySchema(schemaData),
           meta
         })
       )
-      return schemaData
     }
     const onFail = FirebaseError => {
       console.warn(FirebaseError)
@@ -97,7 +98,8 @@ const _buildRef = ({ ref, collection, doc }) => {
 }
 
 const typeCaste = value => Number(value) ? Number(value) : value
-
+const maybeTypeCasteQuery = query =>
+  typeof query === 'string' ? query.split(' ').map(typeCaste) : query
 /**
  * @param storeRef {Object} - root firestore reference (firebase.firestore())
  * @param config {Object} - describes query to be built
@@ -113,10 +115,10 @@ export const makeQueryBuilder = storeRef => config => {
   if (where) {
     if (Array.isArray(where)) {
       where.forEach(query => {
-        ref = ref.where(...query.split(' ').map(typeCaste))
+        ref = ref.where(...maybeTypeCasteQuery(query))
       })
     } else {
-      ref = ref.where(...where.split(' ').map(typeCaste))
+      ref = ref.where(...maybeTypeCasteQuery(where))
     }
   }
 
