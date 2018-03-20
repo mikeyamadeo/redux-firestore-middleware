@@ -54,16 +54,23 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     const applySchema = makeSchemaApplier(schema)
 
     const onSuccess = response => {
-      const schemaData = query.constructor.name === 'DocumentReference'
-        ? response
-        : response.docs
-      return next(
+      let schemaData = {}
+
+      if (response) {
+        schemaData = extractDataBasedOnFirestoreType[response.constructor.name](
+          response
+        )
+      }
+
+      next(
         actionWith({
           type: successType,
           payload: applySchema(schemaData),
           meta
         })
       )
+
+      return schemaData
     }
     const onFail = FirebaseError => {
       console.warn(FirebaseError)
@@ -85,6 +92,12 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
         return query.update(data).then(onSuccess).catch(onFail)
     }
   }
+}
+
+const extractDataBasedOnFirestoreType = {
+  DocumentReference: response => response,
+  DocumentSnapshot: response => response,
+  QuerySnapshot: ({ docs }) => docs
 }
 
 const _buildRef = ({ ref, collection, doc }) => {
