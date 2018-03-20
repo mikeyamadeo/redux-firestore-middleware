@@ -1,6 +1,6 @@
 {
   "name": "redux-firestore-middleware",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "redux friendly abstraction on top of firebase.firestore",
   "main": "dist",
   "scripts": {
