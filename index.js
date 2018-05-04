@@ -76,7 +76,12 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     }
     const onFail = FirebaseError => {
       console.warn(FirebaseError)
-      next(actionWith({ type: failureType, meta: FirebaseError }))
+      next(
+        actionWith({
+          type: failureType,
+          meta: { error: FirebaseError, ...determineMeta(meta, 2) }
+        })
+      )
       return Promise.reject(FirebaseError)
     }
 
