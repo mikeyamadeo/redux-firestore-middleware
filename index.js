@@ -50,7 +50,7 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
 
     const [ requestType, successType, failureType ] = types
     next(
-      actionWith({ type: requestType, payload, meta: determineMeta(meta, 1) })
+      actionWith({ type: requestType, payload, meta: determineMeta(meta, 0) })
     )
     let query = buildQuery(queryConfig)
     const applySchema = makeSchemaApplier(schema)
