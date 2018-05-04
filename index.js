@@ -79,7 +79,7 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
       next(
         actionWith({
           type: failureType,
-          meta: { error: FirebaseError, ...determineMeta(meta, 2) }
+          meta: { error: FirebaseError, ...determineMeta(meta || {}, 2) }
         })
       )
       return Promise.reject(FirebaseError)
