@@ -5,7 +5,7 @@ const methods = [ 'onSnapshot', 'get', 'set', 'update', 'add' ]
 /**
  * @param types* {Array} - synchronous, success, and failure redux action types
  * @param payload {Object} - synchronous action payload
- * @param meta {Object} - metadata to pass through with both synchronous and asynchronous actions
+ * @param {Object || Array} meta  - metadata to pass through. If object will pass to both synchronous and asynchronous actions. If array, will pass to corresponding index
  * @param bailout {Func} - function defined by user deciding, given redux state, whether to stop an api call
  * @param schema* {Object} - describes how returning data should be transformed
  *   @param name* {String} - what name to give the entity/ies
@@ -49,7 +49,9 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     }
 
     const [ requestType, successType, failureType ] = types
-    next(actionWith({ type: requestType, payload, meta }))
+    next(
+      actionWith({ type: requestType, payload, meta: determineMeta(meta, 1) })
+    )
     let query = buildQuery(queryConfig)
     const applySchema = makeSchemaApplier(schema)
 
@@ -66,7 +68,7 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
         actionWith({
           type: successType,
           payload: applySchema(schemaData),
-          meta
+          meta: determineMeta(meta, 1)
         })
       )
 
@@ -93,6 +95,8 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     }
   }
 }
+
+const determineMeta = (meta, stage) => Array.isArray(meta) ? meta[stage] : meta
 
 const extractDataBasedOnFirestoreType = {
   DocumentReference: response => response,
