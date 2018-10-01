@@ -1,6 +1,6 @@
-import Promise from 'bluebird'
+import Promise from "bluebird";
 
-const methods = [ 'onSnapshot', 'get', 'set', 'update', 'add' ]
+const methods = ["onSnapshot", "get", "set", "update", "add"];
 
 /**
  * @param types* {Array} - synchronous, success, and failure redux action types
@@ -21,14 +21,14 @@ const methods = [ 'onSnapshot', 'get', 'set', 'update', 'add' ]
  *   @param method* {String} - firestore operation to execute (onSnapshot, get, update, set, add)
  */
 export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
-  const buildQuery = makeQueryBuilder(firestoreInstance)
+  const buildQuery = makeQueryBuilder(firestoreInstance);
   return store => next => action => {
-    const callStoreConfig = action[MIDDLEWARE_FLAG]
-    if (typeof callStoreConfig === 'undefined') {
-      return next(action)
+    const callStoreConfig = action[MIDDLEWARE_FLAG];
+    if (typeof callStoreConfig === "undefined") {
+      return next(action);
     }
 
-    _validateConfig(callStoreConfig)
+    _validateConfig(callStoreConfig);
 
     const {
       types,
@@ -37,31 +37,34 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
       meta,
       query: queryConfig,
       bailout
-    } = callStoreConfig
+    } = callStoreConfig;
     if (bailout && bailout(store.getState())) {
-      return Promise.resolve()
+      return Promise.resolve();
     }
 
     const actionWith = data => {
-      let finalAction = { ...action, ...data }
-      delete finalAction[MIDDLEWARE_FLAG]
-      return finalAction
-    }
+      let finalAction = { ...action, ...data };
+      delete finalAction[MIDDLEWARE_FLAG];
+      return finalAction;
+    };
 
-    const [ requestType, successType, failureType ] = types
+    const [requestType, successType, failureType] = types;
     next(
       actionWith({ type: requestType, payload, meta: determineMeta(meta, 0) })
-    )
-    let query = buildQuery(queryConfig)
-    const applySchema = makeSchemaApplier(schema)
+    );
+    let query = buildQuery(queryConfig);
+    const applySchema = makeSchemaApplier(schema);
 
     const onSuccess = response => {
-      let schemaData = {}
+      let schemaData = {};
 
       if (response) {
+        console.log("response", response);
+        console.log("response.constructor", response.constructor);
+        console.log("response.constructor.name", response.constructor.name);
         schemaData = extractDataBasedOnFirestoreType[response.constructor.name](
           response
-        )
+        );
       }
 
       next(
@@ -70,144 +73,157 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
           payload: applySchema(schemaData),
           meta: determineMeta(meta, 1)
         })
-      )
+      );
 
-      return schemaData
-    }
+      return schemaData;
+    };
     const onFail = FirebaseError => {
-      console.warn(FirebaseError)
+      console.warn(FirebaseError);
       next(
         actionWith({
           type: failureType,
           meta: { error: FirebaseError, ...determineMeta(meta || {}, 2) }
         })
-      )
-      return Promise.reject(FirebaseError)
-    }
+      );
+      return Promise.reject(FirebaseError);
+    };
 
-    const { data } = queryConfig
+    const { data } = queryConfig;
     switch (queryConfig.method) {
-      case 'onSnapshot':
-        return query.onSnapshot(onSuccess, onFail)
-      case 'get':
-        return query.get().then(onSuccess).catch(onFail)
-      case 'set':
-        return query.set(data).then(onSuccess).catch(onFail)
-      case 'add':
-        return query.add(data).then(onSuccess).catch(onFail)
-      case 'update':
-        return query.update(data).then(onSuccess).catch(onFail)
+      case "onSnapshot":
+        return query.onSnapshot(onSuccess, onFail);
+      case "get":
+        return query
+          .get()
+          .then(onSuccess)
+          .catch(onFail);
+      case "set":
+        return query
+          .set(data)
+          .then(onSuccess)
+          .catch(onFail);
+      case "add":
+        return query
+          .add(data)
+          .then(onSuccess)
+          .catch(onFail);
+      case "update":
+        return query
+          .update(data)
+          .then(onSuccess)
+          .catch(onFail);
     }
-  }
-}
+  };
+};
 
-const determineMeta = (meta, stage) => Array.isArray(meta) ? meta[stage] : meta
+const determineMeta = (meta, stage) =>
+  Array.isArray(meta) ? meta[stage] : meta;
 
 const extractDataBasedOnFirestoreType = {
   DocumentReference: response => response,
   DocumentSnapshot: response => response,
   QuerySnapshot: ({ docs }) => docs
-}
+};
 
 const _buildRef = ({ ref, collection, doc }) => {
-  ref = ref.collection(collection)
+  ref = ref.collection(collection);
 
   if (doc) {
-    ref = ref.doc(doc)
+    ref = ref.doc(doc);
   }
 
-  return ref
-}
+  return ref;
+};
 
-const typeCaste = value => Number(value) ? Number(value) : value
+const typeCaste = value => (Number(value) ? Number(value) : value);
 const maybeTypeCasteQuery = query =>
-  typeof query === 'string' ? query.split(' ').map(typeCaste) : query
+  typeof query === "string" ? query.split(" ").map(typeCaste) : query;
 /**
  * @param storeRef {Object} - root firestore reference (firebase.firestore())
  * @param config {Object} - describes query to be built
  */
 export const makeQueryBuilder = storeRef => config => {
-  const { collection, doc, subcollections = [], where } = config
+  const { collection, doc, subcollections = [], where } = config;
 
-  let ref = [ { collection, doc }, ...subcollections ].reduce(
+  let ref = [{ collection, doc }, ...subcollections].reduce(
     (reduceRef, sub) => _buildRef({ ref: reduceRef, ...sub }),
     storeRef
-  )
+  );
 
   if (where) {
     if (Array.isArray(where)) {
       where.forEach(query => {
-        ref = ref.where(...maybeTypeCasteQuery(query))
-      })
+        ref = ref.where(...maybeTypeCasteQuery(query));
+      });
     } else {
-      ref = ref.where(...maybeTypeCasteQuery(where))
+      ref = ref.where(...maybeTypeCasteQuery(where));
     }
   }
 
-  return ref
-}
+  return ref;
+};
 
 /**
-  * INPUT ->
-  * Schema: {
-  *  key: '_id',
-  *  name: 'users'
-  * }
-  * +
-  * Data: {
-  *  _id: 1
-  *  firstName: 'tina'
-  * }
-  *
-  * OUTPUT ->
-  * Result: {
-  *  entities: {
-  *    '1': { _id: 1, firstName: 'tina'}
-  *  }
-  *  result: [1]
-  * }
-  *
-  * 1. if no key is provided, assume response is either a single entity,
-  * or an array of entities.
-  * 2. if it is a single entity, wrap in array for ease of transformation
-  */
-const docToEntity = doc => ({ id: doc.id, ...doc.data() })
+ * INPUT ->
+ * Schema: {
+ *  key: '_id',
+ *  name: 'users'
+ * }
+ * +
+ * Data: {
+ *  _id: 1
+ *  firstName: 'tina'
+ * }
+ *
+ * OUTPUT ->
+ * Result: {
+ *  entities: {
+ *    '1': { _id: 1, firstName: 'tina'}
+ *  }
+ *  result: [1]
+ * }
+ *
+ * 1. if no key is provided, assume response is either a single entity,
+ * or an array of entities.
+ * 2. if it is a single entity, wrap in array for ease of transformation
+ */
+const docToEntity = doc => ({ id: doc.id, ...doc.data() });
 export const makeSchemaApplier = schema => response => {
-  if (!schema) return response
+  if (!schema) return response;
   const entityTransform = schema.transform
     ? doc => schema.transform(docToEntity(doc))
-    : doc => docToEntity(doc)
+    : doc => docToEntity(doc);
 
-  let data = response
+  let data = response;
 
   /* [1] */
   if (data.constructor !== Array) {
-    data = [ data ] /* [2] */
+    data = [data]; /* [2] */
   }
 
-  const entities = { [schema.name]: {} }
+  const entities = { [schema.name]: {} };
 
-  let ids = []
+  let ids = [];
 
   data.forEach((item, i) => {
-    const entity = entityTransform(item)
-    let _id = entity[schema.key || 'id']
-    entities[schema.name][_id] = entity
-    ids.push(_id)
-  })
+    const entity = entityTransform(item);
+    let _id = entity[schema.key || "id"];
+    entities[schema.name][_id] = entity;
+    ids.push(_id);
+  });
 
-  return { entities, ids }
-}
+  return { entities, ids };
+};
 
 const _validateConfig = config => {
   if (!Array.isArray(config.types) || config.types.length !== 3) {
-    throw new Error('Expected an array of three action types.')
+    throw new Error("Expected an array of three action types.");
   }
-  if (!config.types.every(type => typeof type === 'string')) {
-    throw new Error('Expected action types to be strings.')
+  if (!config.types.every(type => typeof type === "string")) {
+    throw new Error("Expected action types to be strings.");
   }
-  if (typeof bailout !== 'undefined' && typeof bailout !== 'function') {
-    throw new Error('Expected bailout to either be undefined or a function.')
+  if (typeof bailout !== "undefined" && typeof bailout !== "function") {
+    throw new Error("Expected bailout to either be undefined or a function.");
   }
   if (!config.query) {
     throw new Error(
@@ -221,35 +237,37 @@ const _validateConfig = config => {
          @param where {String || Array} - query string(s) describing queries to be made on the record(s). 'status == completed'
          @param method* {String} - firestore operation to execute (onSnapshot, get, update, set, add)
       `
-    )
+    );
   }
 
   if (!config.query.method) {
     throw new Error(
       `No 'method' value provided on 'query' property of firestore middleware config. 'method' required. Available methods: ${methods.map(
-        m => '\n' + m
+        m => "\n" + m
       )}`
-    )
+    );
   }
 
   if (!config.query.collection) {
     throw new Error(
       `No 'collection' value provided in firestore middleware config`
-    )
+    );
   }
 
   if (
     config.query.subcollections &&
-      config.query.subcollections.constructor !== Array
+    config.query.subcollections.constructor !== Array
   ) {
     throw new Error(
-      `Unexpected Type: Subcollections property should be an array. From ${config.types[0]} call.`
-    )
+      `Unexpected Type: Subcollections property should be an array. From ${
+        config.types[0]
+      } call.`
+    );
   }
 
   if (config.query.subcollections && !config.query.doc) {
     throw new Error(
       `No 'doc' value provided in firestore middleware config. Required in order to access subcollections`
-    )
+    );
   }
-}
+};
