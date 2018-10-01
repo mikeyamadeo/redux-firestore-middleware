@@ -55,14 +55,12 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     let query = buildQuery(queryConfig);
     const applySchema = makeSchemaApplier(schema);
 
-    const onSuccess = response => {
+    const onSuccess = responseType => response => {
       let schemaData = {};
 
       if (response) {
-        console.log("response", response);
-        console.log("response.constructor", response.constructor);
-        console.log("response.constructor.name", response.constructor.name);
-        schemaData = response;
+        console.log("responseType", responseType);
+        schemaData = extractDataBasedOnFirestoreType[responseType](response);
       }
 
       next(
@@ -89,26 +87,26 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     const { data } = queryConfig;
     switch (queryConfig.method) {
       case "onSnapshot":
-        return query.onSnapshot(onSuccess, onFail);
+        return query.ref.onSnapshot(onSuccess(query.type), onFail);
       case "get":
-        return query
+        return query.ref
           .get()
-          .then(onSuccess())
+          .then(onSuccess(query.type))
           .catch(onFail);
       case "set":
-        return query
+        return query.ref
           .set(data)
-          .then(onSuccess)
+          .then(onSuccess(query.type))
           .catch(onFail);
       case "add":
-        return query
+        return query.ref
           .add(data)
-          .then(onSuccess)
+          .then(onSuccess(query.type))
           .catch(onFail);
       case "update":
-        return query
+        return query.ref
           .update(data)
-          .then(onSuccess)
+          .then(onSuccess(query.type))
           .catch(onFail);
     }
   };
@@ -118,9 +116,8 @@ const determineMeta = (meta, stage) =>
   Array.isArray(meta) ? meta[stage] : meta;
 
 const extractDataBasedOnFirestoreType = {
-  DocumentReference: response => response,
-  DocumentSnapshot: response => response,
-  QuerySnapshot: ({ docs }) => docs
+  doc: response => response,
+  collection: ({ docs }) => docs
 };
 
 const _buildRef = ({ ref, collection, doc }) => {
@@ -136,19 +133,25 @@ const _buildRef = ({ ref, collection, doc }) => {
 const typeCaste = value => (Number(value) ? Number(value) : value);
 const maybeTypeCasteQuery = query =>
   typeof query === "string" ? query.split(" ").map(typeCaste) : query;
+const queryTypes = {
+  collection: "collection",
+  doc: "doc"
+};
 /**
  * @param storeRef {Object} - root firestore reference (firebase.firestore())
  * @param config {Object} - describes query to be built
  */
 export const makeQueryBuilder = storeRef => config => {
   const { collection, doc, subcollections = [], where } = config;
-
-  let ref = [{ collection, doc }, ...subcollections].reduce(
+  let queryType;
+  const refDescriptor = [{ collection, doc }, ...subcollections];
+  let ref = refDescriptor.reduce(
     (reduceRef, sub) => _buildRef({ ref: reduceRef, ...sub }),
     storeRef
   );
 
   if (where) {
+    queryType = queryTypes.collection;
     if (Array.isArray(where)) {
       where.forEach(query => {
         ref = ref.where(...maybeTypeCasteQuery(query));
@@ -156,9 +159,12 @@ export const makeQueryBuilder = storeRef => config => {
     } else {
       ref = ref.where(...maybeTypeCasteQuery(where));
     }
+  } else {
+    const last = refDescriptor[refDescriptor.length - 1];
+    queryType = last.doc ? queryTypes.doc : queryTypes.collection;
   }
 
-  return ref;
+  return { ref, queryType };
 };
 
 /**
