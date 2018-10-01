@@ -62,9 +62,7 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
         console.log("response", response);
         console.log("response.constructor", response.constructor);
         console.log("response.constructor.name", response.constructor.name);
-        schemaData = (extractDataBasedOnFirestoreType[response.constructor.name] || response => response)(
-          response
-        );
+        schemaData = response;
       }
 
       next(
