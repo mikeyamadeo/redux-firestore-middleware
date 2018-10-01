@@ -164,7 +164,7 @@ export const makeQueryBuilder = storeRef => config => {
     queryType = last.doc ? queryTypes.doc : queryTypes.collection;
   }
 
-  return { ref, queryType };
+  return { ref, type: queryType };
 };
 
 /**
