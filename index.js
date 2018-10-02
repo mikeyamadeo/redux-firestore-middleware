@@ -59,7 +59,6 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
       let schemaData = {};
 
       if (response) {
-        console.log("responseType", responseType);
         schemaData = extractDataBasedOnFirestoreType[responseType](response);
       }
 
