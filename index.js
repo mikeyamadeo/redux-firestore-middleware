@@ -84,28 +84,29 @@ export default ({ firestoreInstance, MIDDLEWARE_FLAG }) => {
     };
 
     const { data } = queryConfig;
+    const successFn = onSuccess(query.type);
     switch (queryConfig.method) {
       case "onSnapshot":
-        return query.ref.onSnapshot(onSuccess(query.type), onFail);
+        return query.ref.onSnapshot(successFn, onFail);
       case "get":
         return query.ref
           .get()
-          .then(onSuccess(query.type))
+          .then(successFn)
           .catch(onFail);
       case "set":
         return query.ref
           .set(data)
-          .then(onSuccess(query.type))
+          .then(successFn)
           .catch(onFail);
       case "add":
         return query.ref
           .add(data)
-          .then(onSuccess(query.type))
+          .then(successFn)
           .catch(onFail);
       case "update":
         return query.ref
           .update(data)
-          .then(onSuccess(query.type))
+          .then(successFn)
           .catch(onFail);
     }
   };
